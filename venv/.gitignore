@@ -1,0 +1,27 @@
+
+# Environnements Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Fichiers temporaires
+*.log
+.pytest_cache/
+
+# Fichiers personnels et secrets
+.env
+.env.*
+!.env.example
+
+# Documents importés et données locales
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+
+# Système
+.DS_Store
+Thumbs.db
