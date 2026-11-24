@@ -1,7 +1,9 @@
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from pathlib import Path
+from app.chunking import split_pages
 import fitz
-import os
+import uuid
 
 app = FastAPI(
     title="DocuMind API",
@@ -9,14 +11,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 @app.get("/")
 def home():
     return {
-        "message": "Bienvenue dans DocuMind !",
+        "message": "Bienvenue dans DocuMind",
         "status": "API opérationnelle"
     }
 
@@ -38,31 +40,28 @@ async def upload_pdf(file: UploadFile = File(...)):
             detail="Fichier PDF invalide."
         )
 
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-
-    with open(file_path, "wb") as f:
-        f.write(content)
+    file_path = UPLOAD_DIR / f"{uuid.uuid4()}.pdf"
+    file_path.write_bytes(content)
 
     try:
-        document = fitz.open(file_path)
+        with fitz.open(file_path) as document:
 
-        extracted_text = ""
+            extracted_text = ""
 
-        for page_number, page in enumerate(document):
-            extracted_text += (
-                f"\n--- Page {page_number + 1} ---\n"
-                + page.get_text()
-            )
+            for page_number, page in enumerate(document):
+                extracted_text += (
+                    f"\n--- Page {page_number + 1} ---\n"
+                    + page.get_text()
+                )
 
-        document.close()
-
-        return {
-            "filename": file.filename,
-            "pages": page_number + 1,
-            "extracted_text": extracted_text
-        }
+            return {
+                "filename": file.filename,
+                "pages": len(document),
+                "extracted_text": extracted_text
+            }
 
     except Exception:
+        file_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=500,
             detail="Erreur lors de l'extraction du PDF."
